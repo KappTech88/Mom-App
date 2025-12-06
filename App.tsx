@@ -16,15 +16,19 @@ const App: React.FC = () => {
   const [newFiles, setNewFiles] = useState<DriveFile[]>([]);
   const [selectedFile, setSelectedFile] = useState<DriveFile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Load files from Drive
   const loadFiles = useCallback(async () => {
     try {
+      setError(null);
       const files = await fetchFilesFromFolder();
       setAllFiles(files);
       setNewFiles(getNewFiles(files));
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load files';
       console.error('Failed to load files:', err);
+      setError(errorMessage);
     }
   }, []);
 
@@ -80,6 +84,37 @@ const App: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-50 flex flex-col items-center justify-center">
         <Loader2 size={80} className="text-sky-500 animate-spin mb-6" />
         <p className="text-2xl text-slate-600 font-medium">Loading...</p>
+      </div>
+    );
+  }
+
+  // Error state with retry option
+  if (error && currentView !== ViewState.LOGIN) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-orange-50 flex flex-col items-center justify-center p-6">
+        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-8 max-w-md text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-red-700 mb-4">Connection Error</h2>
+          <p className="text-lg text-red-600 mb-6">{error}</p>
+          <div className="space-y-3">
+            <button
+              onClick={async () => {
+                setIsLoading(true);
+                await loadFiles();
+                setIsLoading(false);
+              }}
+              className="w-full bg-sky-500 text-white text-xl font-bold py-4 px-6 rounded-xl hover:bg-sky-600 transition-colors"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={handleSignOut}
+              className="w-full bg-slate-200 text-slate-700 text-lg font-medium py-3 px-6 rounded-xl hover:bg-slate-300 transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

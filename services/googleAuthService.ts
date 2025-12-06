@@ -1,6 +1,7 @@
 // Google OAuth Configuration
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const SCOPES = 'https://www.googleapis.com/auth/drive.readonly';
+// Combined scopes: readonly for viewing shared files, drive.file for uploads
+const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file';
 
 let tokenClient: google.accounts.oauth2.TokenClient | null = null;
 let accessToken: string | null = null;

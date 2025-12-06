@@ -16,17 +16,38 @@ export const fetchFilesFromFolder = async (): Promise<DriveFile[]> => {
   
   const url = `${DRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=${encodeURIComponent(fields)}&orderBy=createdTime desc`;
 
+  console.log('Fetching files from folder:', FOLDER_ID);
+  console.log('Using token:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
+  
   const response = await fetch(url, {
     headers: {
       'Authorization': `Bearer ${token}`,
     },
   });
 
+  const data = await response.json();
+  
   if (!response.ok) {
-    throw new Error('Failed to fetch files from Drive');
+    console.error('Drive API Error:', {
+      status: response.status,
+      statusText: response.statusText,
+      error: data.error
+    });
+    
+    // Provide helpful error messages
+    if (response.status === 401) {
+      throw new Error('Authentication expired. Please sign in again.');
+    }
+    if (response.status === 403) {
+      throw new Error('Access denied. Make sure Google Drive API is enabled and the folder is shared with you.');
+    }
+    if (response.status === 404) {
+      throw new Error('Folder not found. Check the VITE_DRIVE_FOLDER_ID is correct.');
+    }
+    throw new Error(`Drive API error: ${data.error?.message || response.statusText}`);
   }
 
-  const data = await response.json();
+  console.log('Files fetched successfully:', data.files?.length || 0, 'files');
   return data.files || [];
 };
 
@@ -85,6 +106,12 @@ export const getThumbnailUrl = (file: DriveFile): string => {
 export const uploadFile = async (file: File): Promise<DriveFile> => {
   const token = getAccessToken();
   if (!token) throw new Error('Not authenticated');
+  
+  if (!FOLDER_ID) {
+    throw new Error('Folder ID not configured');
+  }
+
+  console.log('Uploading file:', file.name, 'to folder:', FOLDER_ID);
 
   const metadata = {
     name: file.name,
@@ -103,11 +130,22 @@ export const uploadFile = async (file: File): Promise<DriveFile> => {
     body: form,
   });
 
+  const data = await response.json();
+
   if (!response.ok) {
-    throw new Error('Failed to upload file');
+    console.error('Upload failed:', {
+      status: response.status,
+      error: data.error
+    });
+    
+    if (response.status === 403) {
+      throw new Error('Permission denied. Please sign out and sign in again to grant upload access.');
+    }
+    throw new Error(data.error?.message || 'Failed to upload file');
   }
 
-  return response.json();
+  console.log('Upload successful:', data);
+  return data;
 };
 
 // Local storage for tracking seen files
